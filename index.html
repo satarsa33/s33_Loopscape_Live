@@ -1399,22 +1399,24 @@ $('#scSave').addEventListener('click', () => {
 function loadScene(id) {
   const sc = S.scenes.find(x => x.id === id);
   if (!sc) return;
-  const apply = () => {
-    for (const st of S.strokes) killStroke(st);
-    const harmonyFixed = applyData(sc.data);
-    if (harmonyFixed) rebuildHarmony();
-    S.currentScene = id;
-    syncControls(); buildRhythmGrid(); rhythmUI(); updateLoopUI();
-    S.phase = S.loopA; S.loops = 0;
-    for (const st of S.strokes) if (st.mode === 'bell' || st.mode === 'pad') st.events = resample(st);
-    drawBase(); renderScenes(); save();
-    if (A.master) A.master.gain.setTargetAtTime(S.volume, A.ctx.currentTime, 0.3);
-  };
-  if (A.ctx && A.master) {
-    A.master.gain.cancelScheduledValues(A.ctx.currentTime);
-    A.master.gain.setTargetAtTime(0.0001, A.ctx.currentTime, 0.12);
-    setTimeout(apply, 360);
-  } else apply();
+  // le voci già suonanti (soprattutto i droni) sfumano con il loro rilascio naturale invece di
+  // essere spente di colpo: non tocchiamo il volume generale, così il passaggio si sovrappone
+  // invece di tagliare l'audio.
+  for (const st of S.strokes) killStroke(st);
+  const oldA = S.loopA, oldB = S.loopB, oldPhase = S.phase;
+  const harmonyFixed = applyData(sc.data);
+  if (harmonyFixed) rebuildHarmony();
+  S.currentScene = id;
+  // la playhead non riparte da capo: mantiene la sua posizione relativa, "avvolta" nella nuova regione
+  const oldW = Math.max(oldB - oldA, 1e-6), newW = Math.max(S.loopB - S.loopA, 1e-6);
+  const rel = ((oldPhase - oldA) % oldW + oldW) % oldW;
+  S.phase = S.loopA + (rel % newW);
+  syncControls(); buildRhythmGrid(); rhythmUI(); updateLoopUI();
+  for (const st of S.strokes) if (st.mode === 'bell' || st.mode === 'pad') st.events = resample(st);
+  // piccola dissolvenza visiva sulla lavagna, per accompagnare il cambio
+  ink.style.transition = 'none'; ink.style.opacity = '0.25';
+  drawBase(); renderScenes(); save();
+  requestAnimationFrame(() => { ink.style.transition = 'opacity .5s ease'; ink.style.opacity = '1'; });
 }
 function syncControls() {
   $('#bpm').value = S.bpm; $('#bpmOut').textContent = S.bpm;

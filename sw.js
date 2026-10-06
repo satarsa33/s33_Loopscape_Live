@@ -1,6 +1,6 @@
 // Service worker: l'app funziona anche offline.
 // Per pubblicare una nuova versione, cambia il numero in CACHE.
-const CACHE = 'loopscape-v8';
+const CACHE = 'loopscape-v9';
 const ASSETS = [
   './', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',
